@@ -90,3 +90,6 @@ db.sqlite3
 
 notes.json
 payments_data.json
+
+.idea
+.idea/

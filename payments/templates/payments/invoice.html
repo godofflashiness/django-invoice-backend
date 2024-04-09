@@ -150,21 +150,36 @@
             <div class="invoice-from">
                <small>from</small>
                <address class="m-t-5 m-b-5">
-                  <strong class="text-inverse">Twitter, Inc.</strong><br>
-                  Street Address<br>
-                  City, Zip Code<br>
+                  <strong class="text-inverse">PAROSHIL TEX LLP</strong><br>
+                  Vidyasagar Residency, 5<br>
+                  Vidyasagar Road, Nabagram,<br>
+                  Hooghly, West Bengal, 712246, India<br>
                   Phone: (123) 456-7890<br>
                   Fax: (123) 456-7890
                </address>
             </div>
             <div class="invoice-to">
                <small>to</small>
+               <small>Billing Details</small>
                <address class="m-t-5 m-b-5">
-                  <strong class="text-inverse">Company Name</strong><br>
-                  Street Address<br>
-                  City, Zip Code<br>
-                  Phone: (123) 456-7890<br>
-                  Fax: (123) 456-7890
+                  <strong class="text-inverse">{{ billing.first_name }} {{ billing.last_name }}</strong><br>
+                  {{ billing.address_1 }}<br>
+                  {{ billing.address_2 }}<br>
+                  {{ billing.city }}, {{ billing.postcode }}, {{ billing.country }}<br>
+                  Phone: {{ billing.phone }}<br>
+                  Email: {{ billing.email }}
+               </address>
+            </div>
+            <div class="invoice-to">
+               <small>to</small>
+               <small>Shipping Details</small>
+               <address class="m-t-5 m-b-5">
+                  <strong class="text-inverse">{{ shipping.first_name }} {{ shipping.last_name }}</strong><br>
+                  {{ shipping.address_1 }}<br>
+                  {{ shipping.address_2 }}<br>
+                  {{ shipping.city }}, {{ shipping.postcode }}, {{ shipping.country }}<br>
+                  Phone: {{ shipping.phone }}<br>
+                  Email: {{ shipping.email }}
                </address>
             </div>
             <div class="invoice-date">
@@ -184,40 +199,26 @@
                <table class="table table-invoice">
                   <thead>
                      <tr>
-                        <th>TASK DESCRIPTION</th>
+                        <th>PRODUCT DESCRIPTION</th>
                         <th class="text-center" width="10%">RATE</th>
-                        <th class="text-center" width="10%">HOURS</th>
+                        <th class="text-center" width="10%">TAX</th>
+                        <th class="text-center" width="10%">QUANTITY</th>
                         <th class="text-right" width="20%">LINE TOTAL</th>
                      </tr>
                   </thead>
                   <tbody>
+                     {% for item in line_items %}
                      <tr>
                         <td>
-                           <span class="text-inverse">Website design &amp; development</span><br>
-                           <small>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed id sagittis arcu.</small>
-                        </td>
-                        <td class="text-center">$50.00</td>
-                        <td class="text-center">50</td>
-                        <td class="text-right">$2,500.00</td>
+                           <span class="text-inverse">{{ item.name }}</span><br>
+                           <small>Product ID: {{ item.product_id }}, SKU: {{ item.sku }}</small>
+                       </td>
+                       <td class="text-center">₹{{ item.price }}</td>
+                       <td class="text-center">₹{{ item.total_tax }}</td>
+                       <td class="text-center">{{ item.quantity }}</td>
+                       <td class="text-right">₹{{ item.total }}</td>
                      </tr>
-                     <tr>
-                        <td>
-                           <span class="text-inverse">Branding</span><br>
-                           <small>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed id sagittis arcu.</small>
-                        </td>
-                        <td class="text-center">$50.00</td>
-                        <td class="text-center">40</td>
-                        <td class="text-right">$2,000.00</td>
-                     </tr>
-                     <tr>
-                        <td>
-                           <span class="text-inverse">Redesign Service</span><br>
-                           <small>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed id sagittis arcu.</small>
-                        </td>
-                        <td class="text-center">$50.00</td>
-                        <td class="text-center">50</td>
-                        <td class="text-right">$2,500.00</td>
-                     </tr>
+                     {% endfor %}
                   </tbody>
                </table>
             </div>
@@ -259,9 +260,9 @@
                THANK YOU FOR YOUR BUSINESS
             </p>
             <p class="text-center">
-               <span class="m-r-10"><i class="fa fa-fw fa-lg fa-globe"></i> matiasgallipoli.com</span>
+               <span class="m-r-10"><i class="fa fa-fw fa-lg fa-globe"></i> paroshiltex.com</span>
                <span class="m-r-10"><i class="fa fa-fw fa-lg fa-phone-volume"></i> T:016-18192302</span>
-               <span class="m-r-10"><i class="fa fa-fw fa-lg fa-envelope"></i> rtiemps@gmail.com</span>
+               <span class="m-r-10"><i class="fa fa-fw fa-lg fa-envelope"></i> kaushik@paroshil.com</span>
             </p>
          </div>
          <!-- end invoice-footer -->

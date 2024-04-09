@@ -10,10 +10,18 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.http import JsonResponse
 from django.http import HttpRequest
+from django.core import serializers
+from django.shortcuts import get_object_or_404
+from django.http import Http404
+from django.forms.models import model_to_dict
 
 from django.shortcuts import render
 import razorpay
 import requests
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 from .models import Payment, BillingAddress, ShippingAddress, Order, LineItem
 
@@ -48,6 +56,15 @@ async def fetch_order_data(session, woo_order_id, headers):
             return None
 
 def populate_database_from_json():
+    """
+    Populates the database with data from a JSON file.
+
+    Reads the JSON file containing payment and order data, and creates corresponding models in the database.
+    The JSON file should be named 'payments_data.json' and located in the same directory as this script.
+
+    Returns:
+        None
+    """
     json_file = 'payments_data.json'
     if os.path.exists(json_file):
         with open(json_file, 'r') as f:
@@ -136,8 +153,13 @@ def populate_database_from_json():
 
 async def payment_details(request: HttpRequest) -> JsonResponse:
     """
-    Retrieves payment and order details from a payment gateway and a WooCommerce API.
-    Returns the data as a JSON response.
+    Retrieve payment details from Razorpay and WooCommerce API.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        JsonResponse: The JSON response containing the payment details.
     """
     json_file = 'payments_data.json'
     stored_payments = []
@@ -155,10 +177,16 @@ async def payment_details(request: HttpRequest) -> JsonResponse:
     payments = []
     headers = get_woo_api_headers()
 
+    stored_payment_ids = {payment['payment']['id'] for payment in stored_payments}
+    request_count = 0 
+
     async with aiohttp.ClientSession() as session:
         tasks = []
         for payment in payments_data:
             if isinstance(payment, dict):
+                payment_id = payment.get('id')
+                if payment_id in stored_payment_ids:
+                    continue
                 order_id = payment.get('order_id')
                 order_data = None
                 notes = payment.get('notes', [])
@@ -167,8 +195,10 @@ async def payment_details(request: HttpRequest) -> JsonResponse:
                 if woo_order_id:
                     task = fetch_order_data(session, woo_order_id, headers)
                     tasks.append(task)
+                    request_count += 1 
 
         order_data_list = await asyncio.gather(*tasks)
+    
 
         for payment, order_data in zip(payments_data, order_data_list):
             payment_order = {
@@ -178,8 +208,10 @@ async def payment_details(request: HttpRequest) -> JsonResponse:
             if payment_order not in stored_payments:
                 payments.append(payment_order)
 
+    print(f"Number of requests made: {request_count}")  
+    stored_payments.extend(payments)
     with open(json_file, 'w') as f:
-        json.dump(payments, f)
+        json.dump(stored_payments, f)
 
     await sync_to_async(populate_database_from_json)()
 
@@ -190,3 +222,65 @@ async def payment_details(request: HttpRequest) -> JsonResponse:
 def view_invoice(request):
     return render(request, 'payments/invoice.html', {})
 
+def payments_list_view(request):
+    payments = Payment.objects.all()
+    return render(request, 'payments/payments_list.html', {'payments': payments})
+
+def payment_details_view_json(request, payment_id):
+    try:
+        payment = Payment.objects.get(id=payment_id)
+    except Payment.DoesNotExist:
+        return JsonResponse({'error': 'Payment not found'}, status=404)
+
+    try:
+        order = Order.objects.get(payment=payment)
+    except Order.DoesNotExist:
+        return JsonResponse({'error': 'Order not found for this payment'}, status=404)
+
+    line_items = LineItem.objects.filter(order=order)
+
+    payment_dict = model_to_dict(payment)
+    order_dict = model_to_dict(order)
+    billing_dict = model_to_dict(order.billingAddress)
+    shipping_dict = model_to_dict(order.shippingAddress)
+    line_items_dict = [model_to_dict(item) for item in line_items]
+
+    data = {
+        'payment': payment_dict,
+        'order': order_dict,
+        'billing': billing_dict,
+        'shipping': shipping_dict,
+        'line_items': line_items_dict,
+    }
+
+    return JsonResponse(data)
+
+def payment_details_view_html(request, payment_id):
+    try:
+        payment = Payment.objects.get(id=payment_id)
+    except Payment.DoesNotExist:
+        return JsonResponse({'error': 'Payment not found'}, status=404)
+
+    try:
+        order = Order.objects.get(payment=payment)
+    except Order.DoesNotExist:
+        return JsonResponse({'error': 'Order not found for this payment'}, status=404)
+
+    line_items = LineItem.objects.filter(order=order)
+
+    payment_dict = model_to_dict(payment)
+    order_dict = model_to_dict(order)
+    billing_dict = model_to_dict(order.billingAddress)
+    shipping_dict = model_to_dict(order.shippingAddress)
+    line_items_dict = [model_to_dict(item) for item in line_items]
+
+    data = {
+        'payment': payment_dict,
+        'order': order_dict,
+        'billing': billing_dict,
+        'shipping': shipping_dict,
+        'line_items': line_items_dict,
+    }
+
+    # Render the data to the 'invoice.html' template
+    return render(request, 'payments/invoice.html', data)
