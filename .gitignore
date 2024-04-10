@@ -93,3 +93,8 @@ payments_data.json
 
 .idea
 .idea/
+idea/
+idea
+
+# .gitignore
+node_modules/

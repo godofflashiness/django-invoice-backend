@@ -35,12 +35,18 @@ class ShippingAddress(models.Model):
     email = models.EmailField(null=True, blank=True)
     phone = models.CharField(max_length=50, null=True, blank=True)  
 
+class Invoice(models.Model):
+    invoice_number = models.CharField(max_length=50)
+    invoice_date = models.DateTimeField()
+    invoice_sent = models.BooleanField(default=False)
+
 class Order(models.Model):
     id = models.CharField(max_length=50, primary_key=True)
 
     payment = models.OneToOneField(Payment, on_delete=models.CASCADE)
     billingAddress = models.OneToOneField(BillingAddress, on_delete=models.CASCADE)
     shippingAddress = models.OneToOneField(ShippingAddress, on_delete=models.CASCADE)
+    invoice = models.OneToOneField(Invoice, on_delete=models.CASCADE, blank=True, null=True)
 
     status = models.CharField(max_length=10)
     currency = models.CharField(max_length=3)
@@ -64,3 +70,7 @@ class LineItem(models.Model):
     taxes = models.TextField()
     sku = models.CharField(max_length=50)
     price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    sgst = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    cgst = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    igst = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)

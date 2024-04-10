@@ -5,25 +5,31 @@ import asyncio
 import json
 import os
 from asgiref.sync import sync_to_async
+from datetime import datetime
+
 
 
 from django.conf import settings
 from django.http import JsonResponse
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.core import serializers
 from django.shortcuts import get_object_or_404
 from django.http import Http404
 from django.forms.models import model_to_dict
-
+from django.views import View
+from django.template.loader import get_template
 from django.shortcuts import render
+
 import razorpay
 import requests
+from weasyprint import HTML
 
 import logging
 
 logger = logging.getLogger(__name__)
 
-from .models import Payment, BillingAddress, ShippingAddress, Order, LineItem
+from .models import Payment, BillingAddress, ShippingAddress, Order, LineItem, Invoice
+from .utils import generate_invoice_number, calculate_line_item_taxes
 
 def get_woo_order_id(notes: Union[Dict, List]) -> Optional[str]:
     """
@@ -118,6 +124,11 @@ def populate_database_from_json():
                         phone=order_data['shipping']['phone']
                     )
 
+                    invoice = Invoice.objects.create(
+                        invoice_number=generate_invoice_number(),
+                        invoice_date=datetime.now(),
+                        invoice_sent=False
+                    )
 
                     order_model = Order.objects.create(
                         id=order_data['id'],
@@ -131,10 +142,11 @@ def populate_database_from_json():
                         payment=payment_model,
                         billingAddress=billing_address_model,
                         shippingAddress=shipping_address_model,
+                        invoice=invoice,
                     )
 
                     for line_item in order_data['line_items']:
-                        LineItem.objects.create(
+                        line_item_model = LineItem.objects.create(
                             order=order_model,
                             id=line_item['id'],
                             name=line_item['name'],
@@ -148,7 +160,10 @@ def populate_database_from_json():
                             total_tax=float(line_item['total_tax']),
                             sku=line_item['sku'],
                             price=float(line_item['price']),
-                    )
+                        )
+
+                        # Calculate taxes for the line item
+                        calculate_line_item_taxes([line_item_model], order_model.shippingAddress.state)
 
 
 async def payment_details(request: HttpRequest) -> JsonResponse:
@@ -243,6 +258,7 @@ def payment_details_view_json(request, payment_id):
     order_dict = model_to_dict(order)
     billing_dict = model_to_dict(order.billingAddress)
     shipping_dict = model_to_dict(order.shippingAddress)
+    invoice_dict = model_to_dict(order.invoice)
     line_items_dict = [model_to_dict(item) for item in line_items]
 
     data = {
@@ -250,6 +266,7 @@ def payment_details_view_json(request, payment_id):
         'order': order_dict,
         'billing': billing_dict,
         'shipping': shipping_dict,
+        'invoice': invoice_dict, # Added 'invoice' key to the data dictionary
         'line_items': line_items_dict,
     }
 
@@ -272,6 +289,7 @@ def payment_details_view_html(request, payment_id):
     order_dict = model_to_dict(order)
     billing_dict = model_to_dict(order.billingAddress)
     shipping_dict = model_to_dict(order.shippingAddress)
+    invoice_dict = model_to_dict(order.invoice)
     line_items_dict = [model_to_dict(item) for item in line_items]
 
     data = {
@@ -279,8 +297,27 @@ def payment_details_view_html(request, payment_id):
         'order': order_dict,
         'billing': billing_dict,
         'shipping': shipping_dict,
+        'invoice': invoice_dict, 
         'line_items': line_items_dict,
     }
 
     # Render the data to the 'invoice.html' template
     return render(request, 'payments/invoice.html', data)
+
+class InvoicePDFView(View):
+    def get(self, request, invoice_id):
+        # Get the invoice data.
+        invoice = get_object_or_404(Invoice, id=invoice_id)
+
+        # Render the invoice to a HTML string.
+        template = get_template('payments/invoice.html')
+        html = template.render({'invoice': invoice}, request=request)
+
+        # Convert the HTML to a PDF.
+        html = HTML(string=html, base_url=request.build_absolute_uri())
+        pdf = html.write_pdf()
+
+        # Create a HTTP response with the PDF.
+        response = HttpResponse(pdf, content_type='application/pdf')
+        response['Content-Disposition'] = f'filename="invoice_{invoice_id}.pdf"'
+        return response

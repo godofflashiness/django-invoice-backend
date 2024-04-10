@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -123,8 +124,10 @@
                 background: #fff;
                 border-color: #d9dfe3;
             }
+            
     </style>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <script src="{% static 'js/bootstrap.min.js' %}"></script>
     <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet">
 </head>
 <body>
@@ -132,18 +135,32 @@
    <div class="col-md-12">
       <div class="invoice">
          <!-- begin invoice-company -->
-         <div class="invoice-company text-inverse f-w-600">
-            <span class="pull-right hidden-print">
-            <a href="javascript:;" class="btn btn-sm btn-white m-b-10 p-l-5"><i class="fa fa-file t-plus-1 text-danger fa-fw fa-lg"></i> Export as PDF</a>
-            <a href="javascript:;" onclick="window.print()" class="btn btn-sm btn-white m-b-10 p-l-5"><i class="fa fa-print t-plus-1 fa-fw fa-lg"></i> Print</a>
-            </span>
-            PAROSHIL TEX LLP
-         </div>
-         <div>
-            <p class="my-0">GSTIN: 19ABDFP3467A1ZC</p>
-            <p class="my-0">Phone: +91 980431229</p>
-            <p class="my-0">Email: kaushik@paroshil.com</p>
-         </div>
+         <div class="container-fluid">
+            <div class="row align-items-center">
+              <div class="col-md-1">
+                <img src="{% static 'logo/paroshil-logo.jpeg' %}" alt="logo" class="img-fluid" style="max-height: 100px;">
+              </div>
+              <div class="col-md-11">
+                <div class="invoice-company text-inverse f-w-600">
+                  <span class="pull-right hidden-print">
+                     <a href="{% url 'invoice_pdf' invoice.id %}" class="btn btn-sm btn-white m-b-10 p-l-5">
+                        <i class="fa fa-file t-plus-1 text-danger fa-fw fa-lg"></i> Export as PDF
+                    </a>
+                    <a href="javascript:;" onclick="window.print()" class="btn btn-sm btn-white m-b-10 p-l-5">
+                      <i class="fa fa-print t-plus-1 fa-fw fa-lg"></i> Print
+                    </a>
+                  </span>
+                  PAROSHIL TEX LLP
+                </div>
+                <div>
+                  <p class="my-0">GSTIN: 19ABDFP3467A1ZC</p>
+                  <p class="my-0">Phone: +91 980431229</p>
+                  <p class="my-0">Email: kaushik@paroshil.com</p>
+                </div>
+              </div>
+            </div>
+          </div>
+         
          <!-- end invoice-company -->
          <!-- begin invoice-header -->
          <div class="invoice-header">
@@ -165,9 +182,9 @@
                   <strong class="text-inverse">{{ billing.first_name }} {{ billing.last_name }}</strong><br>
                   {{ billing.address_1 }}<br>
                   {{ billing.address_2 }}<br>
-                  {{ billing.city }}, {{ billing.postcode }}, {{ billing.country }}<br>
-                  Phone: {{ billing.phone }}<br>
-                  Email: {{ billing.email }}
+                  {{ billing.city }}, {{ billing.postcode }}, {{ billing.state }}, {{ billing.country }}<br>
+                  (+91) {{ billing.phone }}<br>
+                  cloudythought9@outlook.com
                </address>
             </div>
             <div class="invoice-to">
@@ -177,17 +194,16 @@
                   <strong class="text-inverse">{{ shipping.first_name }} {{ shipping.last_name }}</strong><br>
                   {{ shipping.address_1 }}<br>
                   {{ shipping.address_2 }}<br>
-                  {{ shipping.city }}, {{ shipping.postcode }}, {{ shipping.country }}<br>
-                  Phone: {{ shipping.phone }}<br>
-                  Email: {{ shipping.email }}
+                  {{ shipping.city }}, {{ shipping.postcode }},  {{ shipping.state }}, {{ shipping.country }}<br>
+                  (+91) {{ shipping.phone }}<br>
+                  cloudythought9@outlook.com
                </address>
             </div>
             <div class="invoice-date">
-               <small>Invoice / July period</small>
-               <div class="date text-inverse m-t-5">August 3,2012</div>
+               <small>Invoice / {{ invoice.invoice_date|date:"F" }} period</small>
+               <div class="date text-inverse m-t-5">{{ invoice.invoice_date|date:"F j, Y" }}</div>
                <div class="invoice-detail">
-                  #0000123DSS<br>
-                  Services Product
+                  #{{ invoice.invoice_number }}<br>
                </div>
             </div>
          </div>
@@ -199,27 +215,37 @@
                <table class="table table-invoice">
                   <thead>
                      <tr>
-                        <th>PRODUCT DESCRIPTION</th>
-                        <th class="text-center" width="10%">RATE</th>
-                        <th class="text-center" width="10%">TAX</th>
-                        <th class="text-center" width="10%">QUANTITY</th>
-                        <th class="text-right" width="20%">LINE TOTAL</th>
+                         <th>PRODUCT DESCRIPTION</th>
+                         <th class="text-center" width="10%">RATE</th>
+                         <th class="text-center" width="10%">QUANTITY</th>
+                         <th class="text-center" width="10%">SGST</th>
+                         <th class="text-center" width="10%">CGST</th>
+                         <th class="text-center" width="10%">IGST</th>
+                         <th class="text-right" width="20%">LINE TOTAL</th>
                      </tr>
-                  </thead>
-                  <tbody>
+                 </thead>
+                 <tbody>
                      {% for item in line_items %}
                      <tr>
-                        <td>
-                           <span class="text-inverse">{{ item.name }}</span><br>
-                           <small>Product ID: {{ item.product_id }}, SKU: {{ item.sku }}</small>
-                       </td>
-                       <td class="text-center">₹{{ item.price }}</td>
-                       <td class="text-center">₹{{ item.total_tax }}</td>
-                       <td class="text-center">{{ item.quantity }}</td>
-                       <td class="text-right">₹{{ item.total }}</td>
+                         <td>
+                             <span class="text-inverse">{{ item.name }}</span><br>
+                             <small>Product ID: {{ item.product_id }}, SKU: {{ item.sku }}</small>
+                         </td>
+                         <td class="text-center">₹{{ item.price }}</td>
+                         <td class="text-center">{{ item.quantity }}</td>
+                         {% if shipping.state == 'WB' %}
+                         <td class="text-center">₹{{ item.sgst }}</td>
+                         <td class="text-center">₹{{ item.cgst }}</td>
+                         <td class="text-center">-</td>
+                         {% else %}
+                         <td class="text-center">-</td>
+                         <td class="text-center">-</td>
+                         <td class="text-center">₹{{ item.igst }}</td>
+                         {% endif %}
+                         <td class="text-right">₹{{ item.total }}</td>
                      </tr>
                      {% endfor %}
-                  </tbody>
+                 </tbody>
                </table>
             </div>
             <!-- end table-responsive -->
@@ -228,20 +254,20 @@
                <div class="invoice-price-left">
                   <div class="invoice-price-row">
                      <div class="sub-price">
-                        <small>SUBTOTAL</small>
-                        <span class="text-inverse">$4,500.00</span>
+                        <!-- <small>SUBTOTAL</small>
+                        <span class="text-inverse">₹4,500.00</span> -->
                      </div>
                      <div class="sub-price">
-                        <i class="fa fa-plus text-muted"></i>
+                        <!-- <i class="fa fa-plus text-muted"></i> -->
                      </div>
                      <div class="sub-price">
-                        <small>PAYPAL FEE (5.4%)</small>
-                        <span class="text-inverse">$108.00</span>
+                        <!-- <small>PAYPAL FEE (5.4%)</small>
+                        <span class="text-inverse">₹108.00</span> -->
                      </div>
                   </div>
                </div>
                <div class="invoice-price-right">
-                  <small>TOTAL</small> <span class="f-w-600">$4508.00</span>
+                  <small>TOTAL</small> <span class="f-w-600">₹{{ order.total }}</span>
                </div>
             </div>
             <!-- end invoice-price -->
@@ -249,15 +275,13 @@
          <!-- end invoice-content -->
          <!-- begin invoice-note -->
          <div class="invoice-note">
-            * Make all cheques payable to [Your Company Name]<br>
-            * Payment is due within 30 days<br>
             * If you have any questions concerning this invoice, contact  [Name, Phone Number, Email]
          </div>
          <!-- end invoice-note -->
          <!-- begin invoice-footer -->
          <div class="invoice-footer">
             <p class="text-center m-b-5 f-w-600">
-               THANK YOU FOR YOUR BUSINESS
+               THANK YOU FOR YOUR SHOPPING
             </p>
             <p class="text-center">
                <span class="m-r-10"><i class="fa fa-fw fa-lg fa-globe"></i> paroshiltex.com</span>
